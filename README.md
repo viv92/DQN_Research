@@ -13,8 +13,8 @@ Research on implementing Deep Q-Learning (DQN) with Natural Gradient Descent (NG
 
 ## File Description
 
-	**exprep_mcar.py** - MountainCar RL agent implemented using Q-learning + Experience Replay with Linear Regression 
-	**exprep_nn_mcar.py** - MountainCar RL agent implemented using Q-learning + Experience Replay with Neural Network
-	**sarsa_mcar.py** - MountainCar RL agent implemented using SARSA with Linear Regression 
-	**sarsa_nn_mcar.py** - MountainCar RL agent implemented using SARSA with Neural Network
+	**exprep_mcar.py** - MountainCar RL agent implemented using Q-learning + Experience Replay with Linear function approximator 
+	**exprep_nn_mcar.py** - MountainCar RL agent implemented using Q-learning + Experience Replay with Neural Network as function approximator
+	**sarsa_mcar.py** - MountainCar RL agent implemented using SARSA with Linear function approximator 
+	**sarsa_nn_mcar.py** - MountainCar RL agent implemented using SARSA with Neural Network as function approximator
  

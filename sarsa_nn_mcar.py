@@ -98,7 +98,8 @@ def main():
 				#reduce eps exploration
 				eps = 1./((i_episode/50) + 10)
 
-				break;
+				#break;
+				continue;
 
 	env.close()
 

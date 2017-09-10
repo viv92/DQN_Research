@@ -17,6 +17,7 @@ max_samples = 1
 max_iters = 1
 rm_size = 100000
 rm_full_flag = 0
+tim = 0 #global time
 
 #replay memory
 rm_present_state = [[0,0]]*rm_size
@@ -63,7 +64,7 @@ b_conv1 = bias_variable([5])
 h_conv1 = tf.nn.relu(conv2d(x_obs, W_conv1) + b_conv1) #size = [None, 1, 2, 5]
 
 #fully connected layer
-W_fc1 = weight_variable([1*2*5, 16]) #why 16 ?
+W_fc1 = weight_variable([1*2*5, 16]) 
 b_fc1 = bias_variable([16])
 
 #flatten previous layer's output to apply fc layer
@@ -81,14 +82,21 @@ W_fc2 = weight_variable([16, 3])
 b_fc2 = bias_variable([3])
 y_conv = tf.matmul(h_fc1, W_fc2) + b_fc2 #size = [None, 3]
 
+opt_act = tf.argmax(y_conv,1)
+maxq = tf.reduce_max(y_conv)
+
 #total cost (un-normalized)
 cost = tf.nn.softmax_cross_entropy_with_logits(logits=y_conv, labels=y_)
 
 #total cost (normalized)
 cross_entropy = tf.reduce_mean(cost)
+tf.summary.scalar('cross_entropy', cross_entropy)
 
 #train op (using ADAM optimizer)
 train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+
+summ_merge = tf.summary.merge_all()
+writer = tf.summary.FileWriter("tf/summaries/", sess.graph)
 
 #-----------------------------------------Neural net: Freeze copy----------------------------#
 
@@ -118,34 +126,31 @@ fW_fc2 = weight_variable([16, 3])
 fb_fc2 = bias_variable([3])
 fy_conv = tf.matmul(fh_fc1, fW_fc2) + fb_fc2 #size = [None, 3]
 
+fopt_act = tf.argmax(fy_conv,1)
+fmaxq = tf.reduce_max(fy_conv)
+
 #-----------------------------------------caller functions -----------------------------------#
 	
 def eps_greedyAction(observation):
-	opt_act = tf.argmax(y_conv,1)
-	maxq = tf.reduce_max(y_conv)
-	#global explore_count	
-	#if explore_count > explore_limit:
-	#	opt_act = randint(0,2)
-	#	maxq = tf.assign(maxq, y_conv[opt_act])
-	#	explore_count = 0
-	#	print "explore"
-	#	return [maxq, opt_act]
 
-	[maxq, opt_act] = sess.run([maxq, opt_act], feed_dict={x:observation})
-	opt_act = opt_act[0]
-	return [maxq, opt_act]
+	global explore_count	
+
+	[maxq_val, opt_act_val] = sess.run([maxq, opt_act], feed_dict={x:observation})
+	opt_act_val = opt_act_val[0]
+	if explore_count > explore_limit:
+		opt_act_val = randint(0,2)
+		explore_count = 0
+		print "explore"
+	return [maxq_val, opt_act_val]
 
 def allAction(observation):
 	y_conv_val = sess.run(y_conv, feed_dict={x:observation})
 	return y_conv_val
 
 def fmaxAction(observation):
-	opt_act = tf.argmax(fy_conv,1)
-	maxq = tf.reduce_max(fy_conv)
-
-	[maxq, opt_act] = sess.run([maxq, opt_act], feed_dict={x:observation})
-	opt_act = opt_act[0]
-	return [maxq, opt_act]
+	[fmaxq_val, fopt_act_val] = sess.run([fmaxq, fopt_act], feed_dict={x:observation})
+	fopt_act_val = fopt_act_val[0]
+	return [fmaxq_val, fopt_act_val]
 
 def Freeze():
 	global fW_conv1, W_conv1, fb_conv1, b_conv1, fW_fc1, W_fc1, fb_fc1, b_fc1, fW_fc2, W_fc2, fb_fc2, b_fc2 
@@ -158,6 +163,7 @@ def Freeze():
 	sess.run([fW_conv1, fb_conv1, fW_fc1, fb_fc1, fW_fc2, fb_fc2])
 
 def Update():
+	global tim
 	for j in range(max_samples):
 		#get random sample from replay memory
 		if rm_full_flag == 1:
@@ -185,7 +191,10 @@ def Update():
 
 		#update params
 		for i in range(max_iters):
-			sess.run(train_step, feed_dict={x:ob, y_:u_qest})			
+			sess.run(train_step, feed_dict={x:ob, y_:u_qest})	
+			#add record to summary
+			summ_run = sess.run(summ_merge, feed_dict={x:ob, y_:u_qest})
+			writer.add_summary(summ_run,tim)		
 
 #---------------------------------------------------------Main------------------------------------------------------#
 def main():
@@ -198,13 +207,14 @@ def main():
 	global explore_count
 	global rm_reset_count
 	global rm_full_flag
+	global tim
 	freerun_count = -1 #since Freeze() should run the first time 
 	for i_episode in range(1000):
 		observation = env.reset()
 
 		for t in range(10000):
 			env.render()
-
+			tim += 1
 			explore_count += 1
 			rm_reset_count += 1
 			freerun_count += 1

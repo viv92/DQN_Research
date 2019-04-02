@@ -1,4 +1,4 @@
-# DQN_Research
+# DQN-NGD
 Research on implementing Deep Q-Learning (DQN) with Natural Gradient Descent (NGD)
 
 ## Pre-requisites
